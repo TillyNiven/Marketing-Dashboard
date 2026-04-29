@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketing Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --dk-green:     #171C10;
+    --lime:         #B4FF48;
+    --lime-light:   #eaffc2;
+    --lime-mid:     #cdff8a;
+    --blue:         #A6DAFF;
+    --blue-light:   #dff1ff;
+    --blue-mid:     #7ec4f5;
+    --pink:         #FFC7DB;
+    --pink-light:   #ffe8f0;
+    --pink-mid:     #ffabc8;
+    --offwhite:     #F0EDE6;
+    --card:         #FFFFFF;
+    --border:       #dedad4;
+    --text:         #171C10;
+    --text-muted:   #4a5a38;
+    --text-faint:   #7a8a68;
+    --nav-width:    224px;
+    --header-h:     60px;
+  }
+
+  body { font-family: 'DM Sans', sans-serif; background: var(--offwhite); color: var(--text); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: var(--header-h);
+    background: var(--dk-green);
+    border-bottom: 1px solid #2a3320;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 1.5rem 0 calc(var(--nav-width) + 1.5rem);
+  }
+  .header-left { display: flex; align-items: baseline; gap: 10px; }
+  .header-title { font-size: 15px; font-weight: 600; color: #fff; }
+  .header-sub { font-size: 12px; color: #7a9a60; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+  .pill-live { background: var(--lime); color: var(--dk-green); }
+  .pill-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--dk-green); display: inline-block; }
+  .pill-updated { background: #2a3320; color: #7a9a60; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
+    width: var(--nav-width);
+    background: var(--dk-green);
+    border-right: 1px solid #2a3320;
+    display: flex; flex-direction: column;
+    padding-top: var(--header-h);
+  }
+  .sidebar-inner { padding: 1.25rem 0.75rem; flex: 1; overflow-y: auto; }
+  .nav-section-label {
+    font-size: 10px; font-weight: 600; color: #4a6a38;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 0 0.75rem; margin: 1rem 0 0.4rem;
+  }
+  .nav-section-label:first-child { margin-top: 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 400; color: #8aaa70;
+    transition: all 0.15s; border: none; background: none;
+    width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: #2a3320; color: #c8e8a0; }
+  .nav-item.active { background: var(--lime); color: var(--dk-green); font-weight: 600; }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .nav-logo { padding: 1rem 1.25rem; border-top: 1px solid #2a3320; font-size: 13px; font-weight: 600; color: var(--lime); }
+
+  /* ── MAIN ── */
+  .main { margin-left: var(--nav-width); margin-top: var(--header-h); padding: 2rem 2rem 4rem; min-height: calc(100vh - var(--header-h)); }
+
+  /* ── PAGES ── */
+  .page { display: none; animation: fadein 0.2s ease; }
+  .page.active { display: block; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ── SECTION LABELS ── */
+  .section-label { font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.1em; margin: 2rem 0 0.75rem; }
+  .section-label:first-child { margin-top: 0; }
+
+  /* ── CARDS ── */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; }
+  .card-title { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 1rem; }
+
+  /* ── GRIDS ── */
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── KPI CARDS ── */
+  .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; }
+  .kpi-accent { display: block; width: 28px; height: 3px; border-radius: 2px; margin-bottom: 12px; }
+  .kpi-label { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi-value { font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .kpi-delta { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+  .delta-pos { color: #3a7a10; }
+  .delta-neg { color: #c0392b; }
+  .delta-neu { color: var(--text-faint); }
+
+  /* ── HORIZONTAL BARS ── */
+  .hbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .hbar-row:last-child { margin-bottom: 0; }
+  .hbar-label { font-size: 12px; color: var(--text-muted); width: 100px; flex-shrink: 0; }
+  .hbar-track { flex: 1; height: 6px; background: var(--offwhite); border-radius: 3px; overflow: hidden; }
+  .hbar-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+  .hbar-val { font-size: 12px; color: var(--text); font-weight: 500; width: 56px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+  /* ── TABLES ── */
+  .camp-table { width: 100%; border-collapse: collapse; }
+  .camp-table th { font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 12px 10px; text-align: right; }
+  .camp-table th:first-child { text-align: left; }
+  .camp-table td { padding: 10px 12px; font-size: 13px; color: var(--text); border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; text-align: right; }
+  .camp-table td:first-child { text-align: left; font-weight: 500; }
+  .camp-table tr:hover td { background: var(--offwhite); }
+  .camp-badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+
+  .seo-table { width: 100%; border-collapse: collapse; }
+  .seo-table tr { border-bottom: 1px solid var(--border); }
+  .seo-table tr:last-child { border-bottom: none; }
+  .seo-table td { padding: 10px 0; font-size: 13px; }
+  .seo-table td:first-child { color: var(--text-muted); }
+  .seo-table td:nth-child(2) { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .seo-table td:last-child { text-align: right; font-size: 12px; }
+  .seo-current td { color: #3a7a10 !important; }
+
+  /* ── AD CARDS ── */
+  .ad-card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--card); }
+  .ad-img { height: 80px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-faint); background: var(--offwhite); }
+  .ad-img img { width: 100%; height: 100%; object-fit: cover; }
+  .ad-img-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ad-meta { padding: 10px 12px; }
+  .ad-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .ad-stats { display: flex; gap: 12px; }
+  .ad-stat { font-size: 11px; color: var(--text-muted); }
+  .ad-stat strong { color: var(--text); font-weight: 600; }
+
+  /* ── PARTNER BULLETS ── */
+  .partner-bullets { list-style: none; }
+  .partner-bullets li { padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+  .partner-bullets li:last-child { border-bottom: none; }
+  .bullet-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--lime); flex-shrink: 0; margin-top: 6px; border: 1px solid #8aba40; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+  .chart-wrap { position: relative; }
+  .page-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-faint); display: flex; justify-content: space-between; }
+
+  /* ── UPDATE BANNER ── */
+  .update-banner {
+    background: var(--lime); border-radius: 10px; padding: 12px 16px;
+    font-size: 13px; color: var(--dk-green); font-weight: 500;
+    margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;
+  }
+  .update-banner span { font-weight: 400; color: #3a5a10; }
+
+  @media (max-width: 900px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .sidebar { transform: translateX(-100%); }
+    .main { margin-left: 0; }
+    .header { padding-left: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-inner">
+    <div class="nav-section-label">Overview</div>
+    <button class="nav-item active" onclick="showPage('summary', this)">
+      <span class="nav-dot" style="background:var(--lime)"></span> Executive summary
+    </button>
+    <div class="nav-section-label">Organic</div>
+    <button class="nav-item" onclick="showPage('li-organic', this)">
+      <span class="nav-dot" style="background:var(--lime)"></span> LinkedIn organic
+    </button>
+    <button class="nav-item" onclick="showPage('seo', this)">
+      <span class="nav-dot" style="background:var(--blue)"></span> SEO traffic
+    </button>
+    <div class="nav-section-label">Paid</div>
+    <button class="nav-item" onclick="showPage('li-paid', this)">
+      <span class="nav-dot" style="background:var(--lime)"></span> LinkedIn paid
+    </button>
+    <button class="nav-item" onclick="showPage('google-ads', this)">
+      <span class="nav-dot" style="background:var(--pink)"></span> Google Ads
+    </button>
+    <div class="nav-section-label">Business</div>
+    <button class="nav-item" onclick="showPage('partnerships', this)">
+      <span class="nav-dot" style="background:var(--blue)"></span> Partnerships & BD
+    </button>
+  </div>
+  <div class="nav-logo" id="company-logo">—</div>
+</nav>
+
+<header class="header">
+  <div class="header-left">
+    <span class="header-title">Marketing dashboard</span>
+    <span class="header-sub" id="header-sub">—</span>
+  </div>
+  <div class="header-right">
+    <span class="pill pill-live">Live</span>
+    <span class="pill pill-updated" id="pill-updated">—</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- SUMMARY -->
+  <div class="page active" id="page-summary">
+    <div class="section-label">Executive summary</div>
+    <div class="grid-4" id="summary-kpis"></div>
+    <div class="section-label">Channel performance this month</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Organic reach</div><div id="summary-organic-bars"></div></div>
+      <div class="card"><div class="card-title">Paid leads by channel</div><div id="summary-paid-bars"></div></div>
+    </div>
+    <div class="section-label">Traffic trend — last 6 months</div>
+    <div class="card">
+      <div class="card-title">Website organic sessions</div>
+      <div class="chart-wrap" style="height:180px;"><canvas id="summary-seo-chart"></canvas></div>
+    </div>
+    <div class="page-footer">
+      <span id="footer-company">—</span>
+      <span>Edit data directly in this file — search for <strong>DASHBOARD_DATA</strong></span>
+    </div>
+  </div>
+
+  <!-- LINKEDIN ORGANIC -->
+  <div class="page" id="page-li-organic">
+    <div class="section-label">Follower growth</div>
+    <div class="grid-4" id="li-follower-kpis"></div>
+    <div class="section-label">New followers per month</div>
+    <div class="card">
+      <div class="card-title">Monthly new followers — Apr 2025 to Apr 2026</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="li-followers-chart"></canvas></div>
+    </div>
+    <div class="section-label">Content performance — current month</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Impressions & engagement</div><div id="li-engagement-bars"></div></div>
+      <div class="card">
+        <div class="card-title">Engagement rate trend</div>
+        <div class="chart-wrap" style="height:180px;"><canvas id="li-engagement-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="section-label">Impressions history</div>
+    <div class="card">
+      <div class="card-title">Impressions per month</div>
+      <div class="chart-wrap" style="height:180px;"><canvas id="li-impressions-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- LINKEDIN PAID -->
+  <div class="page" id="page-li-paid">
+    <div class="section-label">Campaign overview — current month</div>
+    <div class="grid-4" id="li-paid-kpis"></div>
+    <div class="section-label">Campaign breakdown</div>
+    <div class="card"><div class="card-title">Performance by campaign</div><table class="camp-table" id="li-paid-table"></table></div>
+    <div class="section-label">Campaign charts</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Leads by campaign</div><div class="chart-wrap" style="height:200px;"><canvas id="li-paid-leads-chart"></canvas></div></div>
+      <div class="card"><div class="card-title">Spend by campaign (£)</div><div class="chart-wrap" style="height:200px;"><canvas id="li-paid-spend-chart"></canvas></div></div>
+    </div>
+    <div class="section-label">Live ad creatives</div>
+    <div class="grid-2" id="li-ads-grid"></div>
+  </div>
+
+  <!-- SEO -->
+  <div class="page" id="page-seo">
+    <div class="section-label">Organic traffic overview</div>
+    <div class="grid-4" id="seo-kpis"></div>
+    <div class="section-label">Monthly sessions</div>
+    <div class="card">
+      <div class="card-title">Organic sessions — 6 month view</div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="seo-chart"></canvas></div>
+    </div>
+    <div class="section-label">Month-by-month comparison</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">All months</div><table class="seo-table" id="seo-table"></table></div>
+      <div class="card"><div class="card-title">Growth rate %</div><div class="chart-wrap" style="height:200px;"><canvas id="seo-growth-chart"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- GOOGLE ADS -->
+  <div class="page" id="page-google-ads">
+    <div class="section-label">Google Ads overview — current month</div>
+    <div class="grid-4" id="gads-kpis"></div>
+    <div class="section-label">Campaign breakdown</div>
+    <div class="card"><div class="card-title">Performance by campaign</div><table class="camp-table" id="gads-table"></table></div>
+    <div class="section-label">Campaign charts</div>
+    <div class="grid-3">
+      <div class="card"><div class="card-title">Impressions</div><div class="chart-wrap" style="height:180px;"><canvas id="gads-impr-chart"></canvas></div></div>
+      <div class="card"><div class="card-title">Conversions</div><div class="chart-wrap" style="height:180px;"><canvas id="gads-conv-chart"></canvas></div></div>
+      <div class="card"><div class="card-title">Spend (£)</div><div class="chart-wrap" style="height:180px;"><canvas id="gads-spend-chart"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- PARTNERSHIPS -->
+  <div class="page" id="page-partnerships">
+    <div class="section-label">Partnerships snapshot</div>
+    <div class="grid-3" id="partner-kpis"></div>
+    <div class="section-label">Monthly summary</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">This month's highlights</div><ul class="partner-bullets" id="partner-bullets"></ul></div>
+      <div class="card"><div class="card-title">Pipeline & reach</div><div id="partner-bars"></div></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ============================================================
+// DASHBOARD DATA — edit these numbers each month
+// ============================================================
+const DASHBOARD_DATA = {
+
+  companyName: "Your Company",
+  lastUpdated: "April 2026",
+
+  linkedinOrganic: {
+    followers: [
+      { month: "Apr 2025", total: 4045,  newFollowers: 12  },
+      { month: "May 2025", total: 4126,  newFollowers: 81  },
+      { month: "Jun 2025", total: 4195,  newFollowers: 69  },
+      { month: "Jul 2025", total: 4299,  newFollowers: 104 },
+      { month: "Aug 2025", total: 4432,  newFollowers: 133 },
+      { month: "Sep 2025", total: 4639,  newFollowers: 207 },
+      { month: "Oct 2025", total: 4819,  newFollowers: 180 },
+      { month: "Nov 2025", total: 4979,  newFollowers: 160 },
+      { month: "Dec 2025", total: 5042,  newFollowers: 63  },
+      { month: "Jan 2026", total: 5199,  newFollowers: 157 },
+      { month: "Feb 2026", total: 5309,  newFollowers: 110 },
+      { month: "Mar 2026", total: 5471,  newFollowers: 162 },
+      { month: "Apr 2026", total: 5595,  newFollowers: 124 },
+    ],
+    content: [
+      { month: "Apr 2025", impressions: 1606,  clicks: 63,   reactions: 42,  comments: 2,   shares: 0, engagementRate: 0.18 },
+      { month: "May 2025", impressions: 19883, clicks: 911,  reactions: 349, comments: 21,  shares: 6, engagementRate: 2.16 },
+      { month: "Jun 2025", impressions: 13561, clicks: 597,  reactions: 291, comments: 38,  shares: 9, engagementRate: 2.08 },
+      { month: "Jul 2025", impressions: 19729, clicks: 2470, reactions: 511, comments: 59,  shares: 0, engagementRate: 3.66 },
+      { month: "Aug 2025", impressions: 16636, clicks: 4033, reactions: 405, comments: 49,  shares: 1, engagementRate: 9.69 },
+      { month: "Sep 2025", impressions: 22505, clicks: 5738, reactions: 420, comments: 48,  shares: 8, engagementRate: 7.30 },
+      { month: "Oct 2025", impressions: 21044, clicks: 4585, reactions: 395, comments: 18,  shares: 7, engagementRate: 6.90 },
+      { month: "Nov 2025", impressions: 9048,  clicks: 1241, reactions: 177, comments: 0,   shares: 4, engagementRate: 4.36 },
+      { month: "Dec 2025", impressions: 7604,  clicks: 1340, reactions: 195, comments: 7,   shares: 8, engagementRate: 4.67 },
+      { month: "Jan 2026", impressions: 12559, clicks: 1575, reactions: 277, comments: 24,  shares: 4, engagementRate: 3.50 },
+      { month: "Feb 2026", impressions: 20996, clicks: 2295, reactions: 454, comments: 37,  shares: 3, engagementRate: 3.29 },
+      { month: "Mar 2026", impressions: 31241, clicks: 8674, reactions: 661, comments: 134, shares: 5, engagementRate: 7.24 },
+      { month: "Apr 2026", impressions: 24490, clicks: 1491, reactions: 318, comments: 32,  shares: 0, engagementRate: 2.68 },
+    ],
+  },
+
+  linkedinPaid: {
+    campaigns: [
+      // Add your campaigns here when ready, e.g.:
+      // { name: "Brand awareness", impressions: 48000, clicks: 960, leads: 22, spend: 1200 },
+    ],
+    ads: [
+      // Add ad creatives here, e.g.:
+      // { campaign: "Brand awareness", imageUrl: "images/ad1.png", leads: 22, impressions: 48000 },
+    ],
+  },
+
+  seo: [
+    // Add monthly sessions here, e.g.:
+    // { month: "Mar 2026", sessions: 22150 },
+    // { month: "Apr 2026", sessions: 24810 },
+  ],
+
+  googleAds: {
+    campaigns: [
+      // Add your campaigns here, e.g.:
+      // { name: "Brand search", impressions: 38200, clicks: 3209, ctr: 8.4, avgCpc: 1.20, conversions: 142, spend: 3850 },
+    ],
+  },
+
+  partnerships: {
+    activePartnerships: 0,
+    newThisQuarter: 0,
+    pipelineInProgress: 0,
+    partnerTrafficSessions: 0,
+    partnerTrafficPercent: 0,
+    coMarketingReach: "—",
+    monthlySummary: [
+      "Add your partnership highlights for this month here",
+      "New partners signed, events, co-marketing activity",
+      "BD pipeline updates and key opportunities",
+    ],
+  },
+};
+
+// ============================================================
+// DASHBOARD ENGINE — no need to edit below this line
+// ============================================================
+const d = DASHBOARD_DATA;
+const fmt = n => typeof n === 'number' ? n.toLocaleString('en-GB') : n;
+const fmtK = n => n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,'') + 'k' : n;
+const pct = (a, b) => b ? (((a - b) / b) * 100).toFixed(1) : '—';
+const last = arr => arr[arr.length - 1];
+const prev = arr => arr[arr.length - 2];
+
+const C = {
+  lime:      '#B4FF48',
+  limeMid:   '#8acc30',
+  limeLight: '#eaffc2',
+  blue:      '#A6DAFF',
+  blueMid:   '#7ec4f5',
+  blueLight: '#dff1ff',
+  pink:      '#FFC7DB',
+  pinkMid:   '#ffabc8',
+  pinkLight: '#ffe8f0',
+  dk:        '#171C10',
+  green:     '#3a7a10',
+};
+
+function deltaHtml(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return `<span class="delta-neu">${val}</span>`;
+  const arrow = n > 0 ? '↑' : n < 0 ? '↓' : '→';
+  const cls = n > 0 ? 'delta-pos' : n < 0 ? 'delta-neg' : 'delta-neu';
+  return `<span class="${cls}">${arrow} ${Math.abs(n)}% vs prior month</span>`;
+}
+
+function kpiCard(label, value, delta, accent) {
+  return `<div class="kpi-card">
+    <span class="kpi-accent" style="background:${accent}"></span>
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}</div>
+    <div class="kpi-delta">${delta}</div>
+  </div>`;
+}
+
+function emptyState(msg) {
+  return `<div style="padding:2rem;text-align:center;color:var(--text-faint);font-size:13px;">
+    <div style="font-size:22px;margin-bottom:6px;">—</div>${msg}
+  </div>`;
+}
+
+function hBar(label, value, max, color, display) {
+  const w = max ? Math.min(Math.round((value / max) * 100), 100) : 0;
+  return `<div class="hbar-row">
+    <div class="hbar-label">${label}</div>
+    <div class="hbar-track"><div class="hbar-fill" style="width:${w}%;background:${color}"></div></div>
+    <div class="hbar-val">${display || fmt(value)}</div>
+  </div>`;
+}
+
+const chartBase = {
+  plugins: { legend: { display: false }, tooltip: {
+    backgroundColor: '#171C10', titleColor: '#fff', bodyColor: '#aaa',
+    padding: 10, cornerRadius: 8, displayColors: false,
+  }},
+  scales: {
+    x: { grid: { display: false }, ticks: { color: '#7a8a68', font: { size: 11, family: 'DM Sans' } }, border: { display: false } },
+    y: { grid: { color: '#ede9e0' }, ticks: { color: '#7a8a68', font: { size: 11, family: 'DM Sans' } }, border: { display: false } },
+  },
+  responsive: true, maintainAspectRatio: false,
+  animation: { duration: 700, easing: 'easeInOutQuart' },
+};
+
+function barChart(id, labels, data, color, lightColor) {
+  const ctx = document.getElementById(id);
+  if (!ctx || !data.length) return;
+  const colors = data.map((_, i) => i === data.length - 1 ? color : (lightColor || color + '66'));
+  new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+    options: { ...chartBase },
+  });
+}
+
+function lineChart(id, labels, data, color) {
+  const ctx = document.getElementById(id);
+  if (!ctx || !data.length) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + '25',
+      borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: color, fill: true, tension: 0.35 }] },
+    options: { ...chartBase },
+  });
+}
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function init() {
+  document.getElementById('header-sub').textContent = d.lastUpdated;
+  document.getElementById('pill-updated').textContent = 'Updated ' + d.lastUpdated;
+  document.getElementById('company-logo').textContent = d.companyName;
+  document.getElementById('footer-company').textContent = d.companyName + ' · Marketing';
+  buildSummary();
+  buildLinkedInOrganic();
+  buildLinkedInPaid();
+  buildSEO();
+  buildGoogleAds();
+  buildPartnerships();
+}
+
+function buildSummary() {
+  const liOrg = d.linkedinOrganic;
+  const liPaid = d.linkedinPaid;
+  const gads = d.googleAds;
+  const seo = d.seo;
+  const curF = last(liOrg.followers);
+  const prvF = prev(liOrg.followers);
+  const totalLeads = liPaid.campaigns.reduce((s,c) => s+c.leads, 0);
+  const totalSpend = gads.campaigns.reduce((s,c) => s+c.spend, 0);
+  const curSEO = seo.length >= 1 ? last(seo).sessions : null;
+  const prvSEO = seo.length >= 2 ? prev(seo).sessions : null;
+
+  document.getElementById('summary-kpis').innerHTML = [
+    curSEO !== null
+      ? kpiCard('Website sessions', fmt(curSEO), deltaHtml(pct(curSEO, prvSEO)), C.blue)
+      : kpiCard('Website sessions', '—', `<span class="delta-neu">→ add to DASHBOARD_DATA.seo</span>`, C.blue),
+    kpiCard('LinkedIn followers', fmt(curF.total), `<span class="delta-pos">↑ ${fmt(curF.newFollowers)} new this month</span>`, C.lime),
+    liPaid.campaigns.length
+      ? kpiCard('Paid leads', fmt(totalLeads), `<span class="delta-pos">↑ this month</span>`, C.lime)
+      : kpiCard('Paid leads', '—', `<span class="delta-neu">→ add to linkedinPaid.campaigns</span>`, C.lime),
+    gads.campaigns.length
+      ? kpiCard('Google Ads spend', '£'+fmt(totalSpend), `<span class="delta-neu">→ ${gads.campaigns.length} campaigns</span>`, C.pink)
+      : kpiCard('Google Ads spend', '—', `<span class="delta-neu">→ add to googleAds.campaigns</span>`, C.pink),
+  ].join('');
+
+  const curC = last(liOrg.content);
+  document.getElementById('summary-organic-bars').innerHTML =
+    hBar('LI impressions', curC.impressions, curC.impressions, C.lime, fmtK(curC.impressions)) +
+    hBar('LI engagement', curC.engagementRate, 10, C.limeMid, curC.engagementRate+'%') +
+    (curSEO ? hBar('SEO sessions', curSEO, curSEO, C.blue, fmtK(curSEO)) : '') +
+    hBar('New followers', curF.newFollowers, curF.newFollowers, C.limeLight, '+'+fmt(curF.newFollowers));
+
+  if (liPaid.campaigns.length) {
+    const mx = Math.max(...liPaid.campaigns.map(c=>c.leads));
+    document.getElementById('summary-paid-bars').innerHTML =
+      liPaid.campaigns.map(c => hBar(c.name, c.leads, mx, C.lime, c.leads+' leads')).join('');
+  } else {
+    document.getElementById('summary-paid-bars').innerHTML = emptyState('LinkedIn paid data not yet added');
+  }
+
+  if (seo.length >= 2) {
+    barChart('summary-seo-chart', seo.map(s=>s.month.split(' ')[0]), seo.map(s=>s.sessions), C.blue, C.blueLight);
+  } else {
+    const el = document.getElementById('summary-seo-chart');
+    if (el) el.parentElement.innerHTML = emptyState('SEO data not yet added — update DASHBOARD_DATA.seo');
+  }
+}
+
+function buildLinkedInOrganic() {
+  const f = d.linkedinOrganic.followers;
+  const c = d.linkedinOrganic.content;
+  const curF = last(f); const prvF = prev(f);
+  const curC = last(c); const prvC = prev(c);
+
+  document.getElementById('li-follower-kpis').innerHTML = [
+    kpiCard('Total followers', fmt(curF.total), deltaHtml(pct(curF.total, prvF.total)), C.lime),
+    kpiCard('New this month', fmt(curF.newFollowers), deltaHtml(pct(curF.newFollowers, prvF.newFollowers)), C.limeMid),
+    kpiCard('Impressions', fmtK(curC.impressions), deltaHtml(pct(curC.impressions, prvC.impressions)), C.lime),
+    kpiCard('Engagement rate', curC.engagementRate+'%', deltaHtml(pct(curC.engagementRate, prvC.engagementRate)), C.blue),
+  ].join('');
+
+  barChart('li-followers-chart', f.map(x=>x.month.split(' ')[0]), f.map(x=>x.newFollowers), C.lime, C.limeLight);
+
+  document.getElementById('li-engagement-bars').innerHTML =
+    hBar('Impressions', curC.impressions, curC.impressions, C.lime, fmtK(curC.impressions)) +
+    hBar('Clicks', curC.clicks, curC.impressions, C.limeMid, fmt(curC.clicks)) +
+    hBar('Reactions', curC.reactions, curC.impressions/3, C.limeLight, fmt(curC.reactions)) +
+    hBar('Comments', Math.max(curC.comments,0), curC.impressions/3, '#c8e890', fmt(Math.max(curC.comments,0))) +
+    hBar('Shares', curC.shares, curC.impressions/3, '#e0f5a0', fmt(curC.shares)) +
+    hBar('Eng. rate', curC.engagementRate, 10, C.blue, curC.engagementRate+'%');
+
+  lineChart('li-engagement-chart', c.map(x=>x.month.split(' ')[0]), c.map(x=>x.engagementRate), C.blue);
+  barChart('li-impressions-chart', c.map(x=>x.month.split(' ')[0]), c.map(x=>x.impressions), C.lime, C.limeLight);
+}
+
+function buildLinkedInPaid() {
+  const camps = d.linkedinPaid.campaigns;
+  const ads = d.linkedinPaid.ads;
+
+  if (!camps.length) {
+    document.getElementById('li-paid-kpis').innerHTML = kpiCard('No data yet', '—', `<span class="delta-neu">→ add campaigns to DASHBOARD_DATA</span>`, C.lime);
+    ['li-paid-table','li-ads-grid'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=emptyState('No data yet — add to DASHBOARD_DATA.linkedinPaid'); });
+    ['li-paid-leads-chart','li-paid-spend-chart'].forEach(id => { const el=document.getElementById(id); if(el) el.parentElement.innerHTML=emptyState('No data yet'); });
+    return;
+  }
+
+  const totalImpr = camps.reduce((s,c)=>s+c.impressions,0);
+  const totalLeads = camps.reduce((s,c)=>s+c.leads,0);
+  const totalSpend = camps.reduce((s,c)=>s+c.spend,0);
+  const cpl = totalLeads ? (totalSpend/totalLeads).toFixed(2) : '—';
+
+  document.getElementById('li-paid-kpis').innerHTML = [
+    kpiCard('Total impressions', fmtK(totalImpr), `<span class="delta-neu">→ ${camps.length} campaigns</span>`, C.lime),
+    kpiCard('Total leads', fmt(totalLeads), `<span class="delta-pos">↑ this month</span>`, C.lime),
+    kpiCard('Total spend', '£'+fmt(totalSpend), `<span class="delta-neu">→ on budget</span>`, C.pink),
+    kpiCard('Cost per lead', '£'+cpl, `<span class="delta-neu">→ blended CPL</span>`, C.blue),
+  ].join('');
+
+  document.getElementById('li-paid-table').innerHTML = `
+    <thead><tr><th>Campaign</th><th>Impressions</th><th>Clicks</th><th>Leads</th><th>Spend</th><th>CPL</th></tr></thead>
+    <tbody>${camps.map(c=>`<tr>
+      <td><span class="camp-badge" style="background:${C.limeLight};color:var(--dk-green)">${c.name}</span></td>
+      <td>${fmtK(c.impressions)}</td><td>${fmt(c.clicks)}</td>
+      <td><strong>${c.leads}</strong></td>
+      <td>£${fmt(c.spend)}</td>
+      <td>£${c.leads?(c.spend/c.leads).toFixed(0):'—'}</td>
+    </tr>`).join('')}</tbody>`;
+
+  barChart('li-paid-leads-chart', camps.map(c=>c.name.split(' ')[0]), camps.map(c=>c.leads), C.lime, C.limeLight);
+  barChart('li-paid-spend-chart', camps.map(c=>c.name.split(' ')[0]), camps.map(c=>c.spend), C.pink, C.pinkLight);
+
+  document.getElementById('li-ads-grid').innerHTML = ads.length ? ads.map(ad=>`
+    <div class="ad-card">
+      <div class="ad-img">${ad.imageUrl?`<img src="${ad.imageUrl}" alt="${ad.campaign}">`:`<div class="ad-img-placeholder"><span style="font-size:11px;color:var(--text-faint)">Add imageUrl in DASHBOARD_DATA</span></div>`}</div>
+      <div class="ad-meta">
+        <div class="ad-name">${ad.campaign}</div>
+        <div class="ad-stats">
+          <div class="ad-stat"><strong>${fmtK(ad.impressions)}</strong> impr.</div>
+          <div class="ad-stat"><strong>${ad.leads}</strong> leads</div>
+        </div>
+      </div>
+    </div>`).join('') : emptyState('Add ad creative image URLs to DASHBOARD_DATA.linkedinPaid.ads');
+}
+
+function buildSEO() {
+  const seo = d.seo;
+  if (seo.length < 2) {
+    const msg = emptyState('No SEO data yet — add monthly sessions to DASHBOARD_DATA.seo');
+    ['seo-kpis','seo-table'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=msg;});
+    ['seo-chart','seo-growth-chart'].forEach(id=>{const el=document.getElementById(id);if(el)el.parentElement.innerHTML=msg;});
+    return;
+  }
+  const cur=last(seo), prv=prev(seo), first=seo[0];
+  document.getElementById('seo-kpis').innerHTML = [
+    kpiCard('Sessions this month', fmt(cur.sessions), deltaHtml(pct(cur.sessions,prv.sessions)), C.blue),
+    kpiCard('vs prior month', `${parseFloat(pct(cur.sessions,prv.sessions))>=0?'+':''}${pct(cur.sessions,prv.sessions)}%`, `<span class="delta-neu">→ ${fmt(prv.sessions)} prior</span>`, C.blueMid),
+    kpiCard('Growth since start', '+'+pct(cur.sessions,first.sessions)+'%', `<span class="delta-pos">↑ since ${first.month}</span>`, C.lime),
+    kpiCard('Avg monthly', fmt(Math.round(seo.reduce((s,x)=>s+x.sessions,0)/seo.length)), `<span class="delta-neu">→ ${seo.length} months</span>`, C.blue),
+  ].join('');
+
+  barChart('seo-chart', seo.map(s=>s.month.split(' ')[0]), seo.map(s=>s.sessions), C.blue, C.blueLight);
+
+  document.getElementById('seo-table').innerHTML = `<tbody>${seo.map((s,i)=>{
+    const isCur=i===seo.length-1;
+    const delta=i>0?pct(s.sessions,seo[i-1].sessions):'—';
+    const dh=delta==='—'?'<span style="color:var(--text-faint)">—</span>':parseFloat(delta)>=0?`<span class="delta-pos">↑ ${Math.abs(delta)}%</span>`:`<span class="delta-neg">↓ ${Math.abs(delta)}%</span>`;
+    return `<tr class="${isCur?'seo-current':''}"><td>${s.month}</td><td>${fmt(s.sessions)}</td><td>${dh}</td></tr>`;
+  }).join('')}</tbody>`;
+
+  const rates=seo.slice(1).map((s,i)=>parseFloat(pct(s.sessions,seo[i].sessions)));
+  lineChart('seo-growth-chart', seo.slice(1).map(s=>s.month.split(' ')[0]), rates, C.blue);
+}
+
+function buildGoogleAds() {
+  const camps = d.googleAds.campaigns;
+  if (!camps.length) {
+    const msg = emptyState('No Google Ads data yet — add campaigns to DASHBOARD_DATA.googleAds');
+    ['gads-kpis','gads-table'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=msg;});
+    ['gads-impr-chart','gads-conv-chart','gads-spend-chart'].forEach(id=>{const el=document.getElementById(id);if(el)el.parentElement.innerHTML=msg;});
+    return;
+  }
+  const totalImpr=camps.reduce((s,c)=>s+c.impressions,0);
+  const totalConv=camps.reduce((s,c)=>s+c.conversions,0);
+  const totalSpend=camps.reduce((s,c)=>s+c.spend,0);
+  const avgCTR=(camps.reduce((s,c)=>s+c.ctr,0)/camps.length).toFixed(1);
+
+  document.getElementById('gads-kpis').innerHTML = [
+    kpiCard('Total impressions', fmtK(totalImpr), `<span class="delta-neu">→ ${camps.length} campaigns</span>`, C.pink),
+    kpiCard('Total conversions', fmt(totalConv), `<span class="delta-pos">↑ this month</span>`, C.pink),
+    kpiCard('Total spend', '£'+fmt(totalSpend), `<span class="delta-neu">→ on budget</span>`, C.pink),
+    kpiCard('Avg CTR', avgCTR+'%', `<span class="delta-neu">→ blended</span>`, C.blue),
+  ].join('');
+
+  document.getElementById('gads-table').innerHTML = `
+    <thead><tr><th>Campaign</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>Avg CPC</th><th>Conversions</th><th>Spend</th></tr></thead>
+    <tbody>${camps.map(c=>`<tr>
+      <td><span class="camp-badge" style="background:${C.pinkLight};color:#8a1a40">${c.name}</span></td>
+      <td>${fmtK(c.impressions)}</td><td>${fmt(c.clicks)}</td><td>${c.ctr}%</td>
+      <td>£${c.avgCpc.toFixed(2)}</td><td><strong>${c.conversions}</strong></td><td>£${fmt(c.spend)}</td>
+    </tr>`).join('')}</tbody>`;
+
+  barChart('gads-impr-chart', camps.map(c=>c.name.split(' ')[0]), camps.map(c=>c.impressions), C.pink, C.pinkLight);
+  barChart('gads-conv-chart', camps.map(c=>c.name.split(' ')[0]), camps.map(c=>c.conversions), C.lime, C.limeLight);
+  barChart('gads-spend-chart', camps.map(c=>c.name.split(' ')[0]), camps.map(c=>c.spend), C.pink, C.pinkLight);
+}
+
+function buildPartnerships() {
+  const p = d.partnerships;
+  document.getElementById('partner-kpis').innerHTML = [
+    kpiCard('Active partnerships', fmt(p.activePartnerships), `<span class="${p.newThisQuarter>0?'delta-pos':'delta-neu'}">${p.newThisQuarter>0?'↑ '+p.newThisQuarter+' new this quarter':'→ update in DASHBOARD_DATA'}</span>`, C.blue),
+    kpiCard('Partner traffic', p.partnerTrafficSessions?fmt(p.partnerTrafficSessions)+' sessions':'—', `<span class="delta-neu">→ ${p.partnerTrafficPercent||0}% of organic</span>`, C.blue),
+    kpiCard('Co-marketing reach', p.coMarketingReach, `<span class="delta-neu">→ estimated audience</span>`, C.lime),
+  ].join('');
+
+  document.getElementById('partner-bullets').innerHTML = p.monthlySummary.map(item=>
+    `<li><span class="bullet-dot"></span>${item}</li>`).join('');
+
+  document.getElementById('partner-bars').innerHTML =
+    hBar('Active partners', p.activePartnerships, Math.max(p.activePartnerships,20), C.blue, fmt(p.activePartnerships)) +
+    hBar('In pipeline', p.pipelineInProgress, Math.max(p.pipelineInProgress,20), C.blueLight, fmt(p.pipelineInProgress)) +
+    (p.partnerTrafficSessions?hBar('Partner traffic', p.partnerTrafficSessions, 5000, C.lime, fmt(p.partnerTrafficSessions)+' sessions'):'');
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
